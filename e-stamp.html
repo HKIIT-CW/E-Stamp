@@ -123,7 +123,7 @@
             <div class="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 rounded-2xl p-8 shadow-2xl text-center transform animate-pulse">
                 <div class="text-6xl mb-4">🎉</div>
                 <h2 class="text-3xl font-bold text-white mb-3">恭喜！</h2>
-                <p class="text-xl text-white font-semibold mb-4">可以兌換禮品</p>
+                <p class="text-xl text-white font-semibold mb-4">可以兌換禮   </p>
                 <div class="bg-white bg-opacity-20 rounded-xl p-4 backdrop-blur">
                     <p class="text-white text-sm">請向工作人員出示此畫面</p>
                 </div>
@@ -174,17 +174,37 @@
             }
         });
 
-        // State management
-        const REQUIRED_QR_CODES = [
-            'https://hkiit.edu.hk/zh-hant/our-programmes?our-programmes=it114105-higher-diploma-in-software-engineering',
-            'https://hkiit.edu.hk/zh-hant/our-programmes?our-programmes=it114107-higher-diploma-in-game-software-development',
-            'https://hkiit.edu.hk/zh-hant/our-programmes?our-programmes=it114122-higher-diploma-in-cybersecurity',
-            'https://hkiit.edu.hk/zh-hant/our-programmes?our-programmes=it114124-higher-diploma-in-ai-and-smart-technology'
-        ];
+        // QR Code mapping to specific stamp positions
+        const QR_CODE_MAPPING = {
+            // Stamp 1 (index 1): Software Engineering - Rm348
+            'it114105': {
+                stampIndex: 1,
+                name: 'Higher Diploma in Software Engineering (軟件工程高級文憑)',
+                location: 'Rm348'
+            },
+            // Stamp 2 (index 2): Game Software Development - Rm350
+            'it114107': {
+                stampIndex: 2,
+                name: 'Higher Diploma in Game Software Development (遊戲軟件開發高級文憑)',
+                location: 'Rm350'
+            },
+            // Stamp 3 (index 3): Cybersecurity - Rm316a
+            'it114122': {
+                stampIndex: 3,
+                name: 'Higher Diploma in Cybersecurity (網絡安全高級文憑)',
+                location: 'Rm316a'
+            },
+            // Stamp 4 (index 4): AI and Smart Technology - Rm349
+            'it114124': {
+                stampIndex: 4,
+                name: 'Higher Diploma in AI and Smart Technology (人工智能及智能科技高級文憑)',
+                location: 'Rm349'
+            }
+        };
 
         let state = {
             stamps: [false, false, false, false, false],
-            scannedQRCodes: []
+            scannedQRCodes: {}  // Changed to object to track which specific QR codes were scanned
         };
 
         // Load saved state (using memory storage only)
@@ -240,7 +260,9 @@
             const percentage = (count / 5) * 100;
             document.getElementById('progress-bar').style.width = percentage + '%';
             document.getElementById('progress-text').textContent = `${count}/5`;
-            document.getElementById('qr-count').textContent = `${state.scannedQRCodes.length}/4`;
+
+            const scannedCount = Object.keys(state.scannedQRCodes).length;
+            document.getElementById('qr-count').textContent = `${scannedCount}/4`;
         }
 
         // Check if all stamps collected
@@ -282,8 +304,9 @@
 
         // QR Code scan button click
         document.getElementById('btn-scan-qr').addEventListener('click', () => {
-            if (state.scannedQRCodes.length >= 4) {
-                showModal('ℹ️', '已完成', '您已經掃描了所有 QR Code！');
+            const scannedCount = Object.keys(state.scannedQRCodes).length;
+            if (scannedCount >= 4) {
+                showModal('   ️', '已完成', '您已經掃描了所有 QR Code！');
                 return;
             }
             document.getElementById('qr-file-input').click();
@@ -437,31 +460,43 @@
         function processQRCode(data) {
             console.log('Scanned QR Code:', data);
 
-            // Check if this QR code is in the required list
-            const isValid = REQUIRED_QR_CODES.some(qr => data.includes(qr) || qr.includes(data));
+            // Find which QR code this matches
+            let matchedCode = null;
+            let matchedKey = null;
 
-            if (!isValid) {
+            for (const [key, value] of Object.entries(QR_CODE_MAPPING)) {
+                if (data.includes(key)) {
+                    matchedCode = value;
+                    matchedKey = key;
+                    break;
+                }
+            }
+
+            if (!matchedCode) {
                 showModal('⚠️', '無效的 QR Code', '這不是指定的 QR Code，請掃描正確的 QR Code。');
                 return;
             }
 
-            // Check if already scanned
-            if (state.scannedQRCodes.some(scanned => scanned.includes(data) || data.includes(scanned))) {
-                showModal('ℹ️', '已掃描', '您已經掃描過這個 QR Code 了！');
+            // Check if already scanned this specific QR code
+            if (state.scannedQRCodes[matchedKey]) {
+                showModal('ℹ️', '已掃描', `您已經掃描過「${matchedCode.name}」了！`);
                 return;
             }
 
             // Add to scanned list
-            state.scannedQRCodes.push(data);
-            const stampIndex = state.scannedQRCodes.length; // 1-4 maps to stamps 1-4
+            state.scannedQRCodes[matchedKey] = true;
 
+            // Add stamp at the specific position
+            const stampIndex = matchedCode.stampIndex;
             addStamp(stampIndex);
 
-            const remaining = 4 - state.scannedQRCodes.length;
+            const remaining = 4 - Object.keys(state.scannedQRCodes).length;
+            const stampNumber = stampIndex + 1;
+
             if (remaining > 0) {
-                showModal('✅', `獲得第 ${stampIndex + 1} 個印花！`, `還需要 ${remaining} 個 QR Code`);
+                showModal('✅', `獲得第 ${stampNumber} 個印花！`, `${matchedCode.name}\n還需要 ${remaining} 個 QR Code`);
             } else {
-                showModal('✅', `獲得第 ${stampIndex + 1} 個印花！`, '所有 QR Code 已掃描完成！');
+                showModal('✅', `獲得第 ${stampNumber} 個印花！`, `${matchedCode.name}\n所有 QR Code 已掃描完成！`);
             }
         }
 
